@@ -2,9 +2,18 @@
 #include<stdlib.h>
 
 //height of tree in number of bits
-#define height 31
+#define height 32
 
 //structures
+
+typedef struct{
+    int a,b;
+} NODE;
+
+struct avld{
+    NODE *root;
+    int n;
+};
 
 union nxpt{
     struct nlf *nl;
@@ -18,10 +27,13 @@ struct nlf{
 };
 
 struct lf{
-    int x;void *d;
+    int x;
     struct lf *l,*r;
     struct nlf *p;
+    struct avld d;
 };
+
+
 
 //resource allocators
 struct nlf *getnlf(struct lf *pr,struct lf *sc,struct nlf *p,char tl,char tr,int lv){
@@ -32,7 +44,7 @@ struct nlf *getnlf(struct lf *pr,struct lf *sc,struct nlf *p,char tl,char tr,int
 
 struct lf *getlf(struct lf *pr,struct lf *sc,struct nlf *p,int x,void *d){
     struct lf *o;o=malloc(sizeof(struct lf));
-    o->l=pr;o->r=sc;o->p=p;o->x=x;o->d=d;
+    o->l=pr;o->r=sc;o->p=p;o->x=x;o->d=d;printf("x:%d\n",x);
     return o;
 }
 
@@ -98,28 +110,11 @@ struct lf *succ(struct nlf *rt,int x){
     else return t->r.l;
 }
 
-struct lf *succ2(struct nlf *rt,int x){
-    int i,n;struct nlf *t;
-    if(rt==NULL)return NULL;
-    if(rt->tl==0&&rt->tr==0)return NULL;
-    n=rt->lv;t=rt;
-    for(i=n;i>1;i--){printf("cmp %d with %d\n",x,1<<(i-1));
-        if(x&(1<<(i-1))){
-            if(t->tr)t=t->r.nl;else {printf("pathx %d\n",t->r.l->x);return t->r.l;}
-        }
-        else{
-            if(t->tl)t=t->l.nl;else {if(t->tr)return min(t->r.nl); else return t->r.l;}
-        }
-    }
-    if(x&1){if(t->tr)return t->r.l->r;else return t->r.l;}
-    else return t->r.l;
-}
 
 //insert or replace a node with new data 
 void build(struct nlf *rt,int x,void *d){
     int i,j,k,n;struct nlf *t;struct lf *pr,*sc,*y;
     n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);
-    //printf("insetting:%d pr:%d sc:%d",x,pr==NULL?-1:pr->x,sc==NULL?-1:sc->x);getchar();
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
             if(t->tr)t=t->r.nl;else {t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
@@ -135,10 +130,8 @@ void build(struct nlf *rt,int x,void *d){
         if(t->tl){t->l.l->d=d;return;}else {t->tl=1;y=getlf(pr,sc,t,x,d);t->l.l=y;}
     }
     //y->l=pr;y->r=sc;
-    //if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==sc))t->r.l=y;t=t->p;}}
-    //if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==pr))t->l.l=y;t=t->p;}}
-    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=y;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if(t->tl==0)t->l.l=y;else break;t=t->p;}}
+    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==sc))t->r.l=y;t=t->p;}}
+    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==pr))t->l.l=y;t=t->p;}}
 }
 
 //given x return its respective node pointer (just supporter function otherwise NULL)
@@ -169,48 +162,29 @@ void *dict(struct nlf *rt,int x){
 void del(struct nlf *rt,int x){
     int i=0;struct nlf *t,*b;struct lf *pr,*sc,*a;
     a=find(rt,x);
-    if(a==NULL)return;printf("found\n");
-    pr=a->l;sc=a->r;printf("sc:%p pr:%p\n",sc,pr);
+    if(a==NULL)return;
+    pr=a->l;sc=a->r;t=a->p;
     t=a->p;
     if(x&1){t->tr=0;t->r.l=sc;}else{t->tl=0;t->l.l=pr;}b=t->p;
-    if((t->tr+t->tl)==0){free((void*)t);printf("l:%d\n",i);
-    while(t!=NULL&&i<height){i++;t=b;b=b->p;
+    if((t->tr+t->tl)==0){free((void*)t);
+    while(t!=NULL&&i<height){i++;t=b;
         if(x&(1<<i)){t->tr=0;t->r.l=sc;}
-        else{t->tl=0;printf("el:%d\n",t->tr);t->l.l=pr;}
-        printf("l:%d\n",i);
+        else{t->tl=0;t->l.l=pr;}b=t->p;
         if((t->tr+t->tl)==0)free((void*)t);
         else break;
     }}
-    b->tl=0;
-    //if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==a))t->r.l=sc;t=t->p;}}
-    //if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==a))t->l.l=pr;t=t->p;}}
-    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=sc;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if(t->tl==1)t->l.l=pr;else break;t=t->p;}}
-    free((void*)a);
-}
 
-void printwt(struct nlf *rt){
-    if(rt==NULL)return;
-    printf("%p ,",rt);
-    if(rt->lv==1){
-        if(rt->tl)printf("%p,%d ,",rt->l.l,rt->l.l->x);
-        if(rt->tr) printf("%p,%d ,",rt->r.l,rt->r.l->x);
-    }
-    else{
-        if(rt->tl)printwt(rt->l.nl);
-        if(rt->tr)printwt(rt->r.nl);
-    }
+    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==a))t->r.l=sc;t=t->p;}}
+    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==a))t->l.l=pr;t=t->p;}}
 }
 
 int main(){
-    int p[]={74,18,183,2,29,185,940,941,10},i,j,n;
-    char *dat[]={"jfnj","domfk","fedd","wwxc","wuiwgue","auvvxgh","wjhhgv","ped","eobbd"};struct nlf rt;
-    struct lf *a;
-    rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=height;
-    for(i=0;i<9;i++)build(&rt,p[i],dat[i]);
-    
-    del(&rt,2);a=min(&rt);
-    while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
-    //printf("ls:%d",succ2(&rt,940)->x);
+    int p[]={74,18,183,2,29,185,940,100034,10},i,j,n=9;
+    char *dat[]={"jfnj","domfk","fedd"};struct nlf rt;
+    rt.p=NULL;rt.lv=height;rt.r.nl=rt.l.nl=NULL;rt.tl=rt.tr=0;
+    //for(i=0;i<n;i++)build(&rt,p[i],dat[i]);
+    build(&rt,24,(void*)"abcd");
+    build(&rt,30,(void*)"neww");
+    printf("succ:%d\n",succ(&rt,22)->x);printf("pred:%d\n",pred(&rt,31)->x);
     return 0;
 }
