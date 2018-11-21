@@ -115,31 +115,52 @@ struct lf *succ2(struct nlf *rt,int x){
     else return t->r.l;
 }
 
+struct nlf *build(int x,void *d,struct lf *pr,struct lf *sc,struct nlf *p,struct lf **y,int l){
+    int i;struct nlf *o,*t;
+    o=getnlf(pr,sc,p,0,0,l);t=o;
+    for(i=l;i>1;i--){
+        if(x&(1<<(i-1))){t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
+        else{t->tl=1;t->l.nl=getnlf(pr,sc,t,0,0,i-1);t=t->l.nl;}
+    }
+    if(x&1){t->tr=1;*y=t->r.l=getlf(pr,sc,t,x,d);}
+    else{t->tl=1;*y=t->l.l=getlf(pr,sc,t,x,d);}
+    return o;
+}
+
 //insert or replace a node with new data 
-void build(struct nlf *rt,int x,void *d){
-    int i,j,k,n;struct nlf *t;struct lf *pr,*sc,*y;
-    n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);
-    switch(x){case 13:case 23:case 10:case 124://succ2(rt,x);
+void insert(struct nlf *rt,int x,void *d){
+    int i,j,k,n;struct nlf *t,*lp,*ls;struct lf *pr,*sc,*y;
+    n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);lp=ls=NULL;
+
+    switch(x){case 13:case 23:case 10:case 124:default://succ2(rt,x);
     printf("inserting:%d pr:%d sc:%d",x,pr==NULL?-1:pr->x,sc==NULL?-1:sc->x);getchar();}
+
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
-            if(t->tr)t=t->r.nl;else {t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
+            if(t->tr)t=t->r.nl;
+            else{t->tr=1;t->r.nl=build(x,d,pr,sc,t,&y,i-1);lp=t;break;}
         }
         else{
-            if(t->tl)t=t->l.nl;else {t->tl=1;t->l.nl=getnlf(pr,sc,t,0,0,i-1);t=t->l.nl;}
+            if(t->tl)t=t->l.nl;
+            else{t->tl=1;t->l.nl=build(x,d,pr,sc,t,&y,i-1);ls=t;break;}
         }
     }
-    if(x&1){
-        if(t->tr){t->r.l->d=d;return;}else {t->tr=1;y=getlf(pr,sc,t,x,d);t->r.l=y;}
+    if(i==1){
+        if(x&1){
+            if(t->tr){t->r.l->d=d;return;}
+            else {t->tr=1;y=t->r.l=getlf(pr,sc,t,x,d);lp=t;}
+        }
+        else{
+            if(t->tl){t->l.l->d=d;return;}
+            else {t->tl=1;y=t->l.l=getlf(pr,sc,t,x,d);ls=t;}
+        }
     }
-    else{
-        if(t->tl){t->l.l->d=d;return;}else {t->tl=1;y=getlf(pr,sc,t,x,d);t->l.l=y;}
-    }
-    //y->l=pr;y->r=sc;
-    //if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==sc))t->r.l=y;t=t->p;}}
-    //if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==pr))t->l.l=y;t=t->p;}}
-    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=y;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if(t->tl==0)t->l.l=y;else break;t=t->p;}}
+    //while(t!=NULL&&((t->tl+t->tr)!=2))t=t->p;if(ls==NULL)ls=t;else lp=t;
+    t=t->p;i--;
+    if(ls==NULL){while(t!=NULL){if(x&(1<<(i-1))&&((t->tl+t->tr)==2))break;t=t->p;i--;}ls=t;}
+    else{while(t!=NULL){if((x&(1<<(i-1)))==0&&((t->tl+t->tr)==2))break;t=t->p;i--;}lp=t;}
+    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=lp){if(t->tr==0)t->r.l=y;t=t->p;}}
+    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=ls){if(t->tl==0)t->l.l=y;t=t->p;}}
 }
 
 //given x return its respective node pointer (just supporter function otherwise NULL)
@@ -184,8 +205,8 @@ void del(struct nlf *rt,int x){
     }}
     //if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==a))t->r.l=sc;t=t->p;}}
     //if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==a))t->l.l=pr;t=t->p;}}
-    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=sc;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if(t->tl==1)t->l.l=pr;else break;t=t->p;}}
+    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if(t->tr==0&&t->r.l==a)t->r.l=sc;t=t->p;}}
+    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if(t->tl==0&&t->l.l==a)t->l.l=pr;t=t->p;}}
     free((void*)a);
 }
 
@@ -202,17 +223,30 @@ void printwt(struct nlf *rt){
     }
 }
 
+void printwt2(struct nlf *rt){
+    if(rt==NULL)return;
+    printf("%p %d nl,\n",rt,rt->lv);
+    if(rt->lv==1){
+        if(rt->tl)printf("%p %d l,\n",rt->l.l,rt->l.l->x);
+        if(rt->tr) printf("%p %d l,\n",rt->r.l,rt->r.l->x);
+    }
+    else{
+        if(rt->tl)printwt2(rt->l.nl);
+        if(rt->tr)printwt2(rt->r.nl);
+    }
+}
+
 int main(){
     int p[]={1,2,3,4,5,6,7,8,9,9,10,23,124,13,53,1},i,j,n;
     char *dat[]={"jfnj","domfk","fedd","wwxc","wuiwgue","auvvxgh","wjhhgv","ped","eobbd"};struct nlf rt;
     struct lf *a;
     rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=height;
-    for(i=10;i<14;i++)build(&rt,p[i],NULL);
+    for(i=0;i<16;i++)insert(&rt,p[i],NULL);
     
     //del(&rt,2);
     a=min(&rt);
     while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
     //printf("ls:%d",succ2(&rt,940)->x);
-    printwt(&rt);
+    printwt2(&rt);
     return 0;
 }

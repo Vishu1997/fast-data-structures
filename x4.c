@@ -115,31 +115,44 @@ struct lf *succ2(struct nlf *rt,int x){
     else return t->r.l;
 }
 
+struct nlf *build(int x,int h,struct lf *sc,struct lf *pr,struct nlf *p,void *d,struct lf **y){
+    struct nlf rt,*t;int i;t=getnlf(pr,sc,p,0,0,i);
+    for(i=h;i>1;i--){
+        if(x&(1<<(i-1))){t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
+        else{t->tl=1;t->l.nl=getnlf(pr,sc,t,0,0,i-1);t=t->l.nl;}
+    }
+    if(x&1){t->tr=1;*y=t->r.l=getlf(pr,sc,t,x,d);}
+    else {t->tl=1;*y=t->l.l=getlf(pr,sc,t,x,d);}
+}
+
 //insert or replace a node with new data 
-void build(struct nlf *rt,int x,void *d){
+void insert(struct nlf *rt,int x,void *d){
     int i,j,k,n;struct nlf *t;struct lf *pr,*sc,*y;
     n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);
     switch(x){case 13:case 23:case 10:case 124://succ2(rt,x);
     printf("inserting:%d pr:%d sc:%d",x,pr==NULL?-1:pr->x,sc==NULL?-1:sc->x);getchar();}
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
-            if(t->tr)t=t->r.nl;else {t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
+            if(t->tr)t=t->r.nl;
+            else {t->tr=1;t->r.nl=build(x,i-1,sc,pr,t,d,&y);repl(t->l.nl,y,sc);trepl(sc,y,pr);return;}
         }
         else{
-            if(t->tl)t=t->l.nl;else {t->tl=1;t->l.nl=getnlf(pr,sc,t,0,0,i-1);t=t->l.nl;}
+            if(t->tl)t=t->l.nl;
+            else {t->tl=1;t->l.nl=build(x,i-1,sc,pr,t,d,&y);repr(t->r.nl,y,pr);trepr(pr,y,sc);return;}
         }
     }
+
+
+
+
     if(x&1){
-        if(t->tr){t->r.l->d=d;return;}else {t->tr=1;y=getlf(pr,sc,t,x,d);t->r.l=y;}
+        if(t->tr){t->r.l->d=d;return;}else {t->tr=1;y=getlf(pr,sc,t,x,d);t->r.l=y;y->r=pr->r;pr->r=y;
+        if(sc!=NULL)sc->l=y;}
     }
     else{
-        if(t->tl){t->l.l->d=d;return;}else {t->tl=1;y=getlf(pr,sc,t,x,d);t->l.l=y;}
+        if(t->tl){t->l.l->d=d;return;}else {t->tl=1;y=getlf(pr,sc,t,x,d);t->l.l=y;y->l=sc->l;sc->l=y;
+        if(pr!=NULL)pr->r=y;}
     }
-    //y->l=pr;y->r=sc;
-    //if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==sc))t->r.l=y;t=t->p;}}
-    //if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==pr))t->l.l=y;t=t->p;}}
-    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=y;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if(t->tl==0)t->l.l=y;else break;t=t->p;}}
 }
 
 //given x return its respective node pointer (just supporter function otherwise NULL)

@@ -103,7 +103,7 @@ struct lf *succ2(struct nlf *rt,int x){
     if(rt==NULL)return NULL;
     if(rt->tl==0&&rt->tr==0)return NULL;
     n=rt->lv;t=rt;
-    for(i=n;i>1;i--){printf("cmp %d with %d\n",x,1<<(i-1));
+    for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
             if(t->tr)t=t->r.nl;else {printf("pathx %d\n",t->r.l->x);return t->r.l;}
         }
@@ -119,8 +119,7 @@ struct lf *succ2(struct nlf *rt,int x){
 void build(struct nlf *rt,int x,void *d){
     int i,j,k,n;struct nlf *t;struct lf *pr,*sc,*y;
     n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);
-    switch(x){case 13:case 23:case 10:case 124://succ2(rt,x);
-    printf("inserting:%d pr:%d sc:%d",x,pr==NULL?-1:pr->x,sc==NULL?-1:sc->x);getchar();}
+    printf("inserting:%d pr:%d sc:%d",x,pr==NULL?-1:pr->x,sc==NULL?-1:sc->x);getchar();
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
             if(t->tr)t=t->r.nl;else {t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
@@ -138,8 +137,8 @@ void build(struct nlf *rt,int x,void *d){
     //y->l=pr;y->r=sc;
     //if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==sc))t->r.l=y;t=t->p;}}
     //if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==pr))t->l.l=y;t=t->p;}}
-    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=y;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if(t->tl==0)t->l.l=y;else break;t=t->p;}}
+    if(pr!=NULL){pr->r=y;t=pr->p;while(t!=NULL){if(t->tr==0&&t->r.l==sc)t->r.l=y;t=t->p;}}
+    if(sc!=NULL){sc->l=y;t=sc->p;while(t!=NULL){if(t->tl==0&&t->l.l==pr)t->l.l=y;t=t->p;}}
 }
 
 //given x return its respective node pointer (just supporter function otherwise NULL)
@@ -184,8 +183,8 @@ void del(struct nlf *rt,int x){
     }}
     //if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if((t->tr==0)&&(t->r.l==a))t->r.l=sc;t=t->p;}}
     //if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if((t->tl==0)&&(t->l.l==a))t->l.l=pr;t=t->p;}}
-    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if(t->tr==0)t->r.l=sc;else break;t=t->p;}}
-    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if(t->tl==1)t->l.l=pr;else break;t=t->p;}}
+    if(pr!=NULL){pr->r=sc;t=pr->p;while(t!=NULL){if(t->tr==0&&t->r.l==a)t->r.l=sc;t=t->p;}}
+    if(sc!=NULL){sc->l=pr;t=sc->p;while(t!=NULL){if(t->tl==1&&t->r.l==a)t->l.l=pr;t=t->p;}}
     free((void*)a);
 }
 
@@ -203,11 +202,11 @@ void printwt(struct nlf *rt){
 }
 
 int main(){
-    int p[]={1,2,3,4,5,6,7,8,9,9,10,23,124,13,53,1},i,j,n;
+    int p[]={0,__INT32_MAX__,1,2,3,4,5,6,7,8,9,9,10,23,124,13,53,1},i,j,n;
     char *dat[]={"jfnj","domfk","fedd","wwxc","wuiwgue","auvvxgh","wjhhgv","ped","eobbd"};struct nlf rt;
     struct lf *a;
     rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=height;
-    for(i=10;i<14;i++)build(&rt,p[i],NULL);
+    for(i=0;i<16;i++)build(&rt,p[i],NULL);
     
     //del(&rt,2);
     a=min(&rt);
