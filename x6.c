@@ -246,6 +246,9 @@ int main(){
     //del(&rt,2);
     a=min(&rt);
     while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
+    del(&rt,23);
+    a=min(&rt);
+    while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
     //printf("ls:%d",succ2(&rt,940)->x);
     //printwt2(&rt);
     return 0;

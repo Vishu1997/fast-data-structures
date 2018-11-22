@@ -1,10 +1,19 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include"avl.h"
 
 //height of tree in number of bits
 #define height 31
 
 //structures
+
+struct NODE{
+    int d;
+    struct NODE *l,*r;
+};
+//bst abstractions and i would also require status to know if insert/delete was successful or not
+struct NODE *bst_insert(struct NODE *rt,int x,int *status);
+struct NODE *bst_delete(struct NODE *rt,int x,int *status);
 
 union nxpt{
     struct nlf *nl;
@@ -18,7 +27,8 @@ struct nlf{
 };
 
 struct lf{
-    int x;void *d;
+    int x;struct NODE *root;
+    int n;
     struct lf *l,*r;
     struct nlf *p;
 };
@@ -30,9 +40,13 @@ struct nlf *getnlf(struct lf *pr,struct lf *sc,struct nlf *p,char tl,char tr,int
     return o;
 }
 
-struct lf *getlf(struct lf *pr,struct lf *sc,struct nlf *p,int x,void *d){
-    struct lf *o;o=malloc(sizeof(struct lf));
-    o->l=pr;o->r=sc;o->p=p;o->x=x;o->d=d;
+
+//here im creating the tree itself so you dont need to create
+struct lf *getlf(struct lf *pr,struct lf *sc,struct nlf *p,int x){
+    struct lf *o;struct NODE *rt;
+    o=malloc(sizeof(struct lf));rt=malloc(sizeof(struct NODE));
+    rt->l=rt->r=NULL;rt->d=x;
+    o->l=pr;o->r=sc;o->p=p;o->x=x;o->root=rt;o->n=1;
     return o;
 }
 
@@ -98,6 +112,22 @@ struct lf *succ(struct nlf *rt,int x){
     else return t->r.l;
 }
 
+struct lf *succ3(struct nlf *rt,int x){
+    int i,n;struct nlf *t;
+    if(rt==NULL)return NULL;
+    if(rt->tl==0&&rt->tr==0)return NULL;
+    n=rt->lv;t=rt;
+    for(i=n;i>1;i--){
+        if(x&(1<<(i-1))){
+            if(t->tr)t=t->r.nl;else return t->r.l;
+        }
+        else{
+            if(t->tl)t=t->l.nl;else {if(t->tr)return min(t->r.nl); else return t->r.l;}
+        }
+    }
+    return t->r.l;
+}
+
 struct lf *succ2(struct nlf *rt,int x){
     int i,n;struct nlf *t;
     if(rt==NULL)return NULL;
@@ -115,20 +145,20 @@ struct lf *succ2(struct nlf *rt,int x){
     else return t->r.l;
 }
 
-struct nlf *build(int x,void *d,struct lf *pr,struct lf *sc,struct nlf *p,struct lf **y,int l){
+struct nlf *build(int x,struct lf *pr,struct lf *sc,struct nlf *p,struct lf **y,int l){
     int i;struct nlf *o,*t;
     o=getnlf(pr,sc,p,0,0,l);t=o;
     for(i=l;i>1;i--){
         if(x&(1<<(i-1))){t->tr=1;t->r.nl=getnlf(pr,sc,t,0,0,i-1);t=t->r.nl;}
         else{t->tl=1;t->l.nl=getnlf(pr,sc,t,0,0,i-1);t=t->l.nl;}
     }
-    if(x&1){t->tr=1;*y=t->r.l=getlf(pr,sc,t,x,d);}
-    else{t->tl=1;*y=t->l.l=getlf(pr,sc,t,x,d);}
+    if(x&1){t->tr=1;*y=t->r.l=getlf(pr,sc,t,x);}
+    else{t->tl=1;*y=t->l.l=getlf(pr,sc,t,x);}
     return o;
 }
 
 //insert or replace a node with new data 
-void insert(struct nlf *rt,int x,void *d){
+void insert(struct nlf *rt,int x){
     int i,j,k,n;struct nlf *t,*lp,*ls;struct lf *pr,*sc,*y;
     n=rt->lv;t=rt;pr=pred(rt,x);sc=succ(rt,x);lp=ls=NULL;
 
@@ -138,21 +168,21 @@ void insert(struct nlf *rt,int x,void *d){
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
             if(t->tr)t=t->r.nl;
-            else{t->tr=1;t->r.nl=build(x,d,pr,sc,t,&y,i-1);lp=t;break;}
+            else{t->tr=1;t->r.nl=build(x,pr,sc,t,&y,i-1);lp=t;break;}
         }
         else{
             if(t->tl)t=t->l.nl;
-            else{t->tl=1;t->l.nl=build(x,d,pr,sc,t,&y,i-1);ls=t;break;}
+            else{t->tl=1;t->l.nl=build(x,pr,sc,t,&y,i-1);ls=t;break;}
         }
     }
     if(i==1){
         if(x&1){
-            if(t->tr){t->r.l->d=d;return;}
-            else {t->tr=1;y=t->r.l=getlf(pr,sc,t,x,d);lp=t;}
+            if(t->tr){return;}
+            else {t->tr=1;y=t->r.l=getlf(pr,sc,t,x);lp=t;}
         }
         else{
-            if(t->tl){t->l.l->d=d;return;}
-            else {t->tl=1;y=t->l.l=getlf(pr,sc,t,x,d);ls=t;}
+            if(t->tl){return;}
+            else {t->tl=1;y=t->l.l=getlf(pr,sc,t,x);ls=t;}
         }
     }
     //while(t!=NULL&&((t->tl+t->tr)!=2))t=t->p;if(ls==NULL)ls=t;else lp=t;
@@ -176,14 +206,6 @@ struct lf *find(struct nlf *rt,int x){
     if(x&1){if(t->tr)return t->r.l;}
     else{if(t->tl)return t->l.l;}
     return NULL;
-}
-
-//given x retrieve its data or NULL
-void *dict(struct nlf *rt,int x){
-    struct lf *t;
-    t=find(rt,x);
-    if(t==NULL)return NULL;
-    return t->d;
 }
 
 
@@ -236,17 +258,22 @@ void printwt2(struct nlf *rt){
     }
 }
 
+
+//yfast methods
+void yfins(struct nlf *rt,int x){       //well test and implement now and later put that w/2 and w limits
+    struct lf *t;int i,j,k;
+    t=succ3(rt,x);
+    if(t==NULL)insert(rt,x);
+    else t->root=bst_insert(t->root,x);t->n++;
+}
+
 int main(){
     int p[]={1,2,3,4,5,6,7,8,9,9,10,23,124,13,53,1,23,456,2132,1342194,1232,453,14546,1234725},i,j,n;
-    char *dat[]={"jfnj","domfk","fedd","wwxc","wuiwgue","auvvxgh","wjhhgv","ped","eobbd"};struct nlf rt;
+    struct nlf rt;
     struct lf *a;
     rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=height;
-    for(i=0;i<(sizeof(p)/4);i++)insert(&rt,p[i],NULL);
-    
-    //del(&rt,2);
+    for(i=0;i<(sizeof(p)/4);i++)yf(&rt,p[i]);
     a=min(&rt);
     while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
-    //printf("ls:%d",succ2(&rt,940)->x);
-    //printwt2(&rt);
     return 0;
 }
