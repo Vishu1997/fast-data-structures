@@ -93,6 +93,40 @@ avl_node * insertNode(avl_node * n, int value,int *st){
 	return n;
 }
 
+int avl_min(avl_node *n){
+	if(n==NULL)return -1;
+	while(n->left!=NULL)n=n->left;
+	return n->value;
+}
+
+int avl_max(avl_node *n){
+	if(n==NULL)return -1;
+	while(n->right!=NULL)n=n->right;
+	return n->value;
+}
+
+int avl_find(avl_node *n,int x){
+	if(n==NULL)return 0;
+	if(n->value==x)return 1;
+	if(n->value>x)return avl_find(n->left,x);
+	if(n->value<x)return avl_find(n->right,x);
+}
+
+int avl_pred(avl_node *n,int x){int k;
+	if(n==NULL)return -1;
+	if(n->value>=x)return avl_max(n->left);
+	k=avl_pred(n->left,x);
+	return k>n->value?k:n->value;
+}
+
+int avl_succ(avl_node *n,int x){int k;
+	if(n==NULL)return -1;
+	if(n->value<=x)return avl_min(n->right);
+	k=avl_succ(n->right,x);
+	if(k==-1)return n->value;
+	return k<n->value?k:n->value;
+}
+
 avl_node * minNode(avl_node * n){
 	avl_node * curr = n;
 	while(curr->left !=NULL)
