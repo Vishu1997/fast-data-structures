@@ -3,17 +3,10 @@
 #include"avl.h"
 
 //height of tree in number of bits
-#define height 31
+#define xheight 32
 
 //structures
-
-struct NODE{
-    int d;
-    struct NODE *l,*r;
-};
 //bst abstractions and i would also require status to know if insert/delete was successful or not
-struct NODE *bst_insert(struct NODE *rt,int x,int *status);
-struct NODE *bst_delete(struct NODE *rt,int x,int *status);
 
 union nxpt{
     struct nlf *nl;
@@ -27,7 +20,7 @@ struct nlf{
 };
 
 struct lf{
-    int x;struct NODE *root;
+    int x;struct avl_node *root;
     int n;
     struct lf *l,*r;
     struct nlf *p;
@@ -43,9 +36,9 @@ struct nlf *getnlf(struct lf *pr,struct lf *sc,struct nlf *p,char tl,char tr,int
 
 //here im creating the tree itself so you dont need to create
 struct lf *getlf(struct lf *pr,struct lf *sc,struct nlf *p,int x){
-    struct lf *o;struct NODE *rt;
-    o=malloc(sizeof(struct lf));rt=malloc(sizeof(struct NODE));
-    rt->l=rt->r=NULL;rt->d=x;
+    struct lf *o;struct avl_node *rt;
+    o=malloc(sizeof(struct lf));rt=malloc(sizeof(struct avl_node));
+    rt->left=rt->right=NULL;rt->value=x;
     o->l=pr;o->r=sc;o->p=p;o->x=x;o->root=rt;o->n=1;
     return o;
 }
@@ -64,7 +57,7 @@ struct lf *min(struct nlf *rt){
 }
 
 //maximum of a tree
-struct lf *max(struct nlf *rt){
+struct lf *xmax(struct nlf *rt){
     int i,n;struct nlf *t;
     if(rt==NULL)return NULL;
     n=rt->lv;t=rt;
@@ -84,7 +77,7 @@ struct lf *pred(struct nlf *rt,int x){
     n=rt->lv;t=rt;
     for(i=n;i>1;i--){
         if(x&(1<<(i-1))){
-            if(t->tr)t=t->r.nl;else {if(t->tl)return max(t->l.nl);else return t->l.l;}
+            if(t->tr)t=t->r.nl;else {if(t->tl)return xmax(t->l.nl);else return t->l.l;}
         }
         else{
             if(t->tl)t=t->l.nl;else return t->l.l;
@@ -218,7 +211,7 @@ void del(struct nlf *rt,int x){
     t=a->p;
     if(x&1){t->tr=0;t->r.l=sc;}else{t->tl=0;t->l.l=pr;}b=t->p;
     if((t->tr+t->tl)==0){free((void*)t);printf("l:%d\n",i);
-    while(t!=NULL&&i<height){i++;t=b;b=b->p;
+    while(t!=NULL&&i<xheight){i++;t=b;b=b->p;
         if(x&(1<<i)){t->tr=0;t->r.l=sc;}
         else{t->tl=0;printf("el:%d\n",t->tr);t->l.l=pr;}
         printf("l:%d\n",i);
@@ -261,19 +254,52 @@ void printwt2(struct nlf *rt){
 
 //yfast methods
 void yfins(struct nlf *rt,int x){       //well test and implement now and later put that w/2 and w limits
-    struct lf *t;int i,j,k;
+    struct lf *t,*q;int i,j,k,st;
     t=succ3(rt,x);
-    if(t==NULL)insert(rt,x);
-    else t->root=bst_insert(t->root,x);t->n++;
+    //printf("succ found:%p\n",t);printf("succ %d:%d\n",x,t==NULL?-1:t->x);
+    st=0;//printf("succ %d:%d\n",x,t==NULL?-1:t->x);
+    if(t==NULL){insert(rt,x);return;}
+    else t->root=insertNode(t->root,x,&st);
+    if(st)t->n++;printf("st:%d,%d,%d\n",x,t->n,st);
+    if(t->n>=xheight){printf("limit exceeded\n");
+        k=t->root->value;
+        insert(rt,k);
+        q=find(rt,k);
+        q->root=t->root->left;
+        q->root=insertNode(q->root,k,&st);
+        q->n=getsize(q->root);
+        t->root=t->root->right;
+        t->n=getsize(t->root);
+    }
+}
+
+void yfdel(struct nlf *rt,int x){
+    struct lf *t,*q;int i,j,k,st;struct avl_node *e;
+    t=succ3(rt,x);
+    if(t==NULL)return;
+    if(t->x==x){
+        if(t->n==1){del(rt,x);free((void*)t->root);}
+        k=getmax(t->root);
+        insert(rt,k);q=find(rt,k);
+        q->root=deleteNode(t->root,k,&st);
+        t=q;
+        }
+    else{
+        t->root=deleteNode(t->root,k,&st);
+        if(st)t->n--;
+    }
 }
 
 int main(){
     int p[]={1,2,3,4,5,6,7,8,9,9,10,23,124,13,53,1,23,456,2132,1342194,1232,453,14546,1234725},i,j,n;
+    int p2[]={100,99,98,97,96,95,94,93,92,91,90,89,88,87,86,85,84,83,82,81,80};
     struct nlf rt;
     struct lf *a;
-    rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=height;
-    for(i=0;i<(sizeof(p)/4);i++)yf(&rt,p[i]);
+    rt.l.l=rt.r.l=NULL;rt.tl=rt.tr=0;rt.p=NULL;rt.lv=xheight;
+    //yfins(&rt,p[0]);
+    //for(i=0;i<21;i++){yfins(&rt,p2[i]);}
+    for(i=400;i>0;i-=2)yfins(&rt,i);
     a=min(&rt);
-    while(a!=NULL){printf("%d,",a->x);a=a->r;}putchar('\n');
+    while(a!=NULL){printf("%d:",a->x);putchar('\n');preorder(a->root);a=a->r;putchar('\n');}putchar('\n');
     return 0;
 }
